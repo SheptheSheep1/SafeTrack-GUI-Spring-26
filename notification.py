@@ -134,16 +134,18 @@ def updated_row_notifications(old_row: tuple, new_row: tuple) -> tuple:
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QScrollArea,
-    QFrame, QLabel, QComboBox, QSizePolicy
+    QFrame, QLabel, QComboBox, QSizePolicy, QCheckBox
 )
 from PyQt6.QtCore import Qt
+from login import User
 
 
 class NotificationsPage(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, user:User=None):
         super().__init__(parent)
 
         self.notifs = []  # cached notifications (only updated on refresh)
+        self.user = user if user else User("Guest", "", 0, [])
 
         self.setMinimumSize(600, 400)
 
@@ -153,15 +155,29 @@ class NotificationsPage(QWidget):
         # Header / controls
         header_layout = QHBoxLayout()
         self.refresh_btn = QPushButton("Refresh")
-        # slightly stronger visual for controls
-        self.refresh_btn.setStyleSheet("padding:6px 10px; border:1px solid #2b3a4a; border-radius:6px;")
+        self.refresh_btn.setStyleSheet("QPushButton { padding:6px 10px; border:1px solid #2b3a4a; border-radius:6px; }"
+                                       "QPushButton:hover {background-color: #162040;}"
+        )
         self.filter_combo = QComboBox()
-        self.filter_combo.setStyleSheet("padding:4px; border:1px solid #2b3a4a; border-radius:6px;")
+        self.filter_combo.setStyleSheet(
+            "QComboBox { padding:4px 8px 4px 8px; border:1px solid #2b3a4a; border-radius:6px; padding-right:28px; background: transparent; }"
+            "QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: center right; width: 26px; border: none; background: transparent; }"
+            "QComboBox::hover { background-color: #162040; }"
+        )
         # filter options: All, SOS, Alert, Info, System
         self.filter_combo.addItems(["All", "SOS", "Alert", "Info", "System"])
-        header_layout.addWidget(QLabel("Notifications"))
+        # shorter label and styling to match the app theme
+        self.my_nodes_checkbox = QCheckBox("My Nodes")
+        self.my_nodes_checkbox.setStyleSheet(
+            "QCheckBox { color: #cfd8ff; spacing:6px; font-weight:600; }"
+            "QCheckBox::indicator { width:18px; height:18px; }"
+        )
+        title_lbl = QLabel("Notifications")
+        title_lbl.setStyleSheet("font-size:16px; font-weight:700; color: #cfd8ff;")
+        header_layout.addWidget(title_lbl)
         header_layout.addStretch()
         header_layout.addWidget(self.filter_combo)
+        header_layout.addWidget(self.my_nodes_checkbox)
         header_layout.addWidget(self.refresh_btn)
         layout.addLayout(header_layout)
 
@@ -179,14 +195,27 @@ class NotificationsPage(QWidget):
         # Connections
         self.refresh_btn.clicked.connect(self.load_notifications)
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
+        self.my_nodes_checkbox.stateChanged.connect(self.on_my_nodes_toggled)
 
         # Filter state: None or lowercase string
         self.current_filter = None
+        # default: show all nodes (unchecked). Keep state synced with checkbox
+        self.my_nodes = False
+        self.my_nodes_checkbox.setChecked(self.my_nodes)
 
     def load_notifications(self):
         """Fetch notifications from the DB and populate the list of cards.
         Intentionally only called when the Refresh button is pressed."""
         self.notifs = database.get_notifs()
+        i = 0
+        while i < len(self.notifs):
+            if self.notifs[i][1] not in self.user.viewable_nodes:
+                if self.notifs[i][2] == "SOS" and not self.my_nodes:
+                    self.notifs[i] = (self.notifs[i][0], self.notifs[i][1], self.notifs[i][2], self.notifs[i][3], "(UNAUTHORIZED TO VIEW LOCATION)")
+                else:
+                    self.notifs.pop(i)
+                    i -= 1
+            i += 1
         self.current_filter = None
         self._populate_list(self.notifs)
 
@@ -258,5 +287,9 @@ class NotificationsPage(QWidget):
         filtered = [r for r in self.notifs if len(r) > 2 and str(r[2]).lower() == wanted]
         self.current_filter = wanted
         self._populate_list(filtered)
+
+    def on_my_nodes_toggled(self):
+        self.my_nodes = self.my_nodes_checkbox.isChecked()
+        self.load_notifications()
 
 

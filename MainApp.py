@@ -18,7 +18,7 @@ from simulating_nodes import Simulate #for debugging only
 
 class MainWindow(QMainWindow):
     logout_requested = pyqtSignal()
-    def __init__(self, user):
+    def __init__(self, user:User):
         # Initilaize main window
         super().__init__()
         self.setWindowTitle("SafeTrack")
@@ -125,16 +125,13 @@ class MainWindow(QMainWindow):
 
         # ----- MAP PAGE -----
         # Initialize alert system early so other methods can use it
-        self.alert_system = AlertSystem(self)
+        self.alert_system = AlertSystem(self, user)
         self.alert_system.viewNodeRequested.connect(self.open_node_on_map)
 
-        self.nodes = user.viewable_nodes #if user.viewable_nodes else self.show_login_request()
-
-        print(f"Loaded nodes: {self.nodes}")
         self.center = (33.42057834806449, -111.9322007773111)
         self.map_widget = MapDisplay(
-            node_ids=self.nodes,
-            center_coord=self.center
+            center_coord=self.center,
+            user=user
         )
         self.stacked_layout.addWidget(self.map_widget)
 
@@ -235,6 +232,9 @@ if __name__ == "__main__":
         main_window.logout_requested.connect(show_login)
         login_window.hide()
         main_window.show()
+        # Print user info for debugging
+        user_info = user.list_info()
+        print(f"Logged in user info: {user_info}")
 
     def show_login():
         login_window.show()

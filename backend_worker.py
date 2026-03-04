@@ -23,11 +23,15 @@ class BackendWorker(QThread):
                     # show system toast immediately
                     for n in notif:
                         # redact location only for nodes the user is NOT authorized to view
-                        if not self.user.is_admin or n[1] not in self.user.viewable_nodes:
+                        print("User viewable nodes:", self.user.viewable_nodes)
+                        if n[1] in self.user.viewable_nodes:
+                            system_notif.new_notif(n[3], n[4], n[2])
+                            print("Backend notif:", n)
+
+                        elif n[2] == "SOS":
                             n = self.redacted_notif(n)
-                        system_notif.new_notif(n[3], n[4], n[2])
-                        print("Backend notif:", n)
-                        # emit to GUI if you want to react (but do NOT auto-refresh NotificationsPage)
+                            system_notif.new_notif(n[3], n[4], n[2])
+                            print("Backend notif (redacted):", n)
                         self.notification_signal.emit(n)
             old_data = data
             self.msleep(1000)   # sleep 1s (keeps loop responsive to requestInterruption())
@@ -36,5 +40,5 @@ class BackendWorker(QThread):
         # Redact location info for unauthorized nodes; keep other details for alerting.
         import re
         pattern = r"(?<=Location: ).*"
-        redacted_message = re.sub(pattern, "(UNAUTHORIZED)", notif[4])
+        redacted_message = re.sub(pattern, "(UNAUTHORIZED)", notif[4], flags=re.IGNORECASE)
         return (notif[0], notif[1], notif[2], notif[3], redacted_message)

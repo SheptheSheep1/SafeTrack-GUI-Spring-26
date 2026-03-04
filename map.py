@@ -6,14 +6,16 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineSettings
 import folium
 import database
+from login import User
 
 class MapDisplay(QWidget):
 
-    def __init__(self, node_ids: list, center_coord: tuple):
+    def __init__(self, center_coord: tuple, user: User):
         super().__init__()
 
-        self.nodes = node_ids
         self.coordinate = center_coord
+        self.user = user
+        self.nodes = self.user.viewable_nodes
         # current_center holds the active center used when rendering.
         # It defaults to the initial coordinate but can be changed
         # by `center_on_node` or by passing a location to `update_map`.
@@ -34,7 +36,9 @@ class MapDisplay(QWidget):
         header_layout.addStretch()
         self.refresh_btn = QPushButton("Refresh")
         # style refresh button to match notifications page controls
-        self.refresh_btn.setStyleSheet("padding:6px 10px; border:1px solid #2b3a4a; border-radius:6px; background:transparent; color:#cfd8ff;")
+        self.refresh_btn.setStyleSheet("QPushButton { padding:6px 10px; border:1px solid #2b3a4a; border-radius:6px; background:transparent; color:#cfd8ff; }"
+                                       "QPushButton:hover { background-color: #162040; }"
+        )
         # clicked() passes a boolean `checked` argument; wrap to avoid
         # that boolean being interpreted as a `location` in update_map
         self.refresh_btn.clicked.connect(lambda checked=False: self.update_map())
@@ -97,7 +101,7 @@ class MapDisplay(QWidget):
         self.m = self.create_map(location, zoom_start)
 
         
-        self.nodes = database.get_nodes()
+        self.nodes = self.user.viewable_nodes
         print(f"Updating map with nodes: {self.nodes}")
 
         for node in self.nodes:

@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
+from PyQt6.QtGui import QKeySequence
+
 class User:
     def __init__(self, username:str, password:str, is_admin:int = 0, viewable_nodes:list = []):
         self.username = username
@@ -56,6 +58,7 @@ class LoginWindow(QWidget):
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
 
         login_btn = QPushButton("Login")
+        login_btn.setShortcut(QKeySequence("Return"))
         login_btn.clicked.connect(self.handle_login)
 
         card_layout.addWidget(title)
@@ -75,15 +78,20 @@ class LoginWindow(QWidget):
         user = User(
             username=name,
             password=self.password.text().strip(),
-            is_admin = 1 if name == "Admin" else 0
+            is_admin = 1 if name.lower() == "admin" and self.password.text().strip() == "admin" else 0,
         )
+        if user.is_admin:
+            user.viewable_nodes = database.get_nodes() # Admin can view all nodes regardless of DB entry
 
         if user.username not in database.list_users():
             database.add_user(user.list_info())
-
-        if database.authenticate_user(user.username, user.password):
             self.login_successful.emit(user)
             self.close()
+
+        elif database.authenticate_user(user.username, user.password):
+            self.login_successful.emit(user)
+            self.close()
+
         else:
             QMessageBox.warning(self, "Login Failed", "Invalid username or password")
 
