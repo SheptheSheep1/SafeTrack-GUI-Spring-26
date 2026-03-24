@@ -15,13 +15,14 @@ class Monitor(QThread):
             ser = serial.Serial(self.port, 9600)
             while not self.isInterruptionRequested():
                 packets = (ser.readline().decode('utf-8').rstrip()).split(' ')
-                #print(packets)
-                packet = [int(packets[0]),float(packets[1]),float(packets[2])]
-                #print(packet)
-                database.add_to_db((datetime.now().strftime(self.time_format), packet[0], packet[1], packet[2], "SOS"))
-                database.delete_before_time((datetime.now() - timedelta(hours=self.hrs)).strftime(self.time_format))
-                database.delete_before_time((datetime.now() - timedelta(hours=self.hrs)).strftime(self.time_format), "notifications")
-                database.print_db()
+                if packets[0] == "[APP]":
+                    #print(packets)
+                    packet = [int(packets[1]),float(packets[2]),float(packets[3])]
+                    #print(packet)
+                    database.add_to_db((datetime.now().strftime(self.time_format), packet[0], packet[1], packet[2], "SOS"))
+                    database.delete_before_time((datetime.now() - timedelta(hours=self.hrs)).strftime(self.time_format))
+                    database.delete_before_time((datetime.now() - timedelta(hours=self.hrs)).strftime(self.time_format), "notifications")
+                    database.print_db()
         except serial.SerialException:
             print("***ERROR: PORT NOT FOUND***")
             pass
